@@ -1,0 +1,15 @@
+{
+  "name": "VoltSnap",
+  "short_name": "VoltSnap",
+  "start_url": "/VOLTSNAP/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/haughey1988-lab/VOLTSNAP/main/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
