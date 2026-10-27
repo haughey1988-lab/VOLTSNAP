@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VoltSnap | 12V Victron Smart-Snap Architect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .slot-card { background: #1e293b; border: 2px solid #334155; border-radius: 0.75rem; transition: all 0.2s; }
+    .slot-error { border-color: #ef4444 !important; background: #450a0a !important; }
+    .slot-warn { border-color: #f59e0b !important; }
+    .bridge-pill { background: #0f172a; border: 1px dashed #38bdf8; }
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .slot-card, .bridge-pill { border: 1px solid #cbd5e1 !important; background: #f8fafc !important; color: #000 !important; }
+      * { color: #000 !important; }
+    }
+  </style>
+</head>
+<body class="p-4 max-w-3xl mx-auto pb-28">
+
+  <!-- HEADER -->
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4 mb-5">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight text-sky-400">⚡ VOLTSNAP <span class="text-xs bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded ml-1 font-bold">v2.0 PRODUCTION</span></h1>
+      <p class="text-xs text-slate-400 mt-1">12V Victron Smart-Snap Electrical Architect & Schematic Engine</p>
+    </div>
+    <div id="system-status-badge" class="px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-900 text-emerald-300 border border-emerald-600">
+      ✓ SYSTEM SAFE
+    </div>
+  </div>
+
+  <!-- 1-TAP STARTER TEMPLATES -->
+  <div class="mb-6 no-print">
+    <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">1. Select Starter Build Template:</label>
+    <div class="grid grid-cols-3 gap-2">
+      <button onclick="loadPreset('weekend')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-left transition">
+        <div class="font-bold text-sm text-sky-400">Weekend</div>
+        <div class="text-[11px] text-slate-400">100Ah • No Inv</div>
+      </button>
+      <button onclick="loadPreset('tourer')" class="bg-slate-800 hover:bg-slate-700 border border-sky-500 rounded-lg p-2.5 text-left transition">
+        <div class="font-bold text-sm text-sky-400">Tourer ★</div>
+        <div class="text-[11px] text-slate-400">200Ah • 1600VA</div>
+      </button>
+      <button onclick="loadPreset('gasless')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-left transition">
+        <div class="font-bold text-sm text-sky-400">Full Gasless</div>
+        <div class="text-[11px] text-slate-400">460Ah • 3000VA</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ALERT BANNER -->
+  <div id="alert-box" class="hidden mb-5 p-3.5 rounded-lg border text-sm space-y-1"></div>
+
+  <!-- THE JIGSAW SLOTS -->
+  <div class="space-y-4">
+
+    <!-- SLOT 1: STORAGE -->
+    <div id="slot-battery" class="slot-card p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase text-sky-400">Slot 1: 12V LiFePO4 Storage Core</span>
+        <span class="text-xs text-slate-400">Spine: Victron Lynx + SmartShunt 500A</span>
+      </div>
+      <select id="battery" onchange="recalculate()" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-sm font-semibold">
+        <option value="100">100Ah LiFePO4 Battery (Max 100A Continuous BMS)</option>
+        <option value="200" selected>200Ah LiFePO4 Bank (Max 200A Continuous BMS)</option>
+        <option value="300">300Ah LiFePO4 Bank (Max 250A Continuous BMS)</option>
+        <option value="460">460Ah High-Capacity Underseat Bank (Max 300A BMS)</option>
+      </select>
+      <div id="bridge-battery" class="bridge-pill mt-3 p-2.5 rounded text-xs text-slate-300 font-mono"></div>
+    </div>
+
+    <!-- SLOT 2: ALTERNATOR DC-DC -->
+    <div id="slot-dcdc" class="slot-card p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase text-sky-400">Slot 2: Alternator Charging (DC-DC)</span>
+        <div class="flex items-center space-x-1">
+          <span class="text-xs text-slate-400">Cable Run:</span>
+          <input id="len-dcdc" type="number" value="4.5" min="1" max="12" step="0.5" onchange="recalculate()" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-center">
+          <span class="text-xs text-slate-400">m</span>
+        </div>
+      </div>
+      <select id="dcdc" onchange="recalculate()" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-sm font-semibold">
+        <option value="18">Victron Orion-Tr Smart 12/12-18A (220W)</option>
+        <option value="30">Victron Orion-Tr Smart 12/12-30A (360W)</option>
+        <option value="50" selected>Victron Orion XS 12/12-50A (700W - Best Seller)</option>
+      </select>
+      <div id="bridge-dcdc" class="bridge-pill mt-3 p-2.5 rounded text-xs text-slate-300 font-mono"></div>
+    </div>
+
+    <!-- SLOT 3: SOLAR MPPT -->
+    <div id="slot-solar" class="slot-card p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase text-sky-400">Slot 3: Solar Array & Victron MPPT</span>
+        <div class="flex items-center space-x-1">
+          <span class="text-xs text-slate-400">Array Voc:</span>
+          <input id="solar-voc" type="number" value="42" min="18" max="140" onchange="recalculate()" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-center">
+          <span class="text-xs text-slate-400">V</span>
+        </div>
+      </div>
+      <select id="mppt" onchange="recalculate()" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-sm font-semibold">
+        <option value="75/15">SmartSolar MPPT 75/15 (Up to 220W / 75V Max)</option>
+        <option value="100/20">SmartSolar MPPT 100/20 (Up to 290W / 100V Max)</option>
+        <option value="100/30" selected>SmartSolar MPPT 100/30 (Up to 440W / 100V Max)</option>
+        <option value="100/50">SmartSolar MPPT 100/50 (Up to 700W / 100V Max)</option>
+      </select>
+      <div id="bridge-solar" class="bridge-pill mt-3 p-2.5 rounded text-xs text-slate-300 font-mono"></div>
+    </div>
+
+    <!-- SLOT 4: 240V INVERTER -->
+    <div id="slot-inverter" class="slot-card p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase text-sky-400">Slot 4: 240V AC Inverter / Charger</span>
+        <div class="flex items-center space-x-1">
+          <span class="text-xs text-slate-400">Cable Run:</span>
+          <input id="len-inv" type="number" value="1.5" min="0.5" max="5" step="0.5" onchange="recalculate()" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-center">
+          <span class="text-xs text-slate-400">m</span>
+        </div>
+      </div>
+      <select id="inverter" onchange="recalculate()" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-sm font-semibold">
+        <option value="0">None (12V Only Off-Grid Build)</option>
+        <option value="800">Victron Phoenix 12/800VA (650W - Laptops/Blender)</option>
+        <option value="1200">Victron MultiPlus 12/1200VA (1000W - Coffee Machine)</option>
+        <option value="1600" selected>Victron MultiPlus 12/1600VA (1300W - Kettle/Hairdryer)</option>
+        <option value="2000">Victron MultiPlus 12/2000VA (1600W - Air Fryer)</option>
+        <option value="3000">Victron MultiPlus-II 12/3000VA (2400W - Dual Induction)</option>
+      </select>
+      <div id="bridge-inverter" class="bridge-pill mt-3 p-2.5 rounded text-xs text-slate-300 font-mono"></div>
+    </div>
+
+    <!-- SLOT 5: 12V FUSE BLOCK & DIESEL HEATER -->
+    <div id="slot-12v" class="slot-card p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold uppercase text-sky-400">Slot 5: 12V Fuse Block & Diesel Heater</span>
+        <div class="flex items-center space-x-1">
+          <span class="text-xs text-slate-400">Heater Run:</span>
+          <input id="len-heater" type="number" value="3.5" min="1" max="10" step="0.5" onchange="recalculate()" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-center">
+          <span class="text-xs text-slate-400">m</span>
+        </div>
+      </div>
+      <div id="bridge-12v" class="bridge-pill mt-2 p-2.5 rounded text-xs text-slate-300 font-mono"></div>
+    </div>
+  </div>
+
+  <!-- LIVE VISUAL WIRING SCHEMATIC (SVG ENGINE) -->
+  <div class="mt-6 bg-slate-900 border-2 border-slate-700 rounded-xl p-4">
+    <div class="flex justify-between items-center mb-3">
+      <span class="text-xs font-black uppercase tracking-wider text-sky-400">📐 Live Custom Wiring Schematic</span>
+      <span id="lock-tag" class="text-[11px] bg-amber-900/80 text-amber-300 px-2 py-0.5 rounded font-bold no-print">🔒 PREVIEW MODE</span>
+    </div>
+    <div id="svg-container" class="w-full overflow-x-auto bg-slate-950 rounded-lg p-2 border border-slate-800"></div>
+  </div>
+
+  <!-- AFFILIATE SHOPPING LIST DRAWER -->
+  <div id="shopping-drawer" class="mt-6 bg-slate-900 border border-slate-700 rounded-xl p-4">
+    <h3 class="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3">🛒 Complete Hardware & Crimp Cut-Sheet</h3>
+    <div id="bom-list" class="space-y-2 text-xs"></div>
+  </div>
+
+  <!-- LEGAL WAIVER CHECKBOX -->
+  <div class="mt-5 p-3 rounded-lg bg-slate-900/90 border border-slate-700 text-xs text-slate-400 flex items-start space-x-2.5">
+    <input id="legal-check" type="checkbox" class="mt-1 w-4 h-4 accent-sky-500 rounded cursor-pointer">
+    <label for="legal-check" class="cursor-pointer leading-relaxed">
+      <b>Mandatory Safety Sign-Off (BS 7671 / ISO 6722):</b> I understand this schematic is a theoretical planning calculation based on pure copper cabling and proper hydraulic crimping. I agree to have all physical wiring inspected and signed off by a qualified auto-electrician before energising the system.
+    </label>
+  </div>
+
+  <!-- MONETIZATION BAR -->
+  <div class="mt-5 bg-slate-800 border-2 border-sky-500 rounded-xl p-4 shadow-lg no-print">
+    <div class="flex justify-between items-center mb-3">
+      <div>
+        <div class="text-xs text-slate-400 uppercase font-bold">Estimated Kit Basket</div>
+        <div id="basket-total" class="text-2xl font-black text-white">£1,840</div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs text-emerald-400 font-bold">Projected 7% Affiliate Cut:</div>
+        <div id="affiliate-cut" class="text-lg font-bold text-emerald-300">~£128.80</div>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <button onclick="exportBlueprint()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3 px-4 rounded-lg text-sm transition">
+        🖨️ Unlock & Print Full PDF Schematic (£19.99)
+      </button>
+      <button onclick="scrollToShop()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-4 rounded-lg text-sm transition">
+        🛒 Buy All Parts Below (1-Click Links)
+      </button>
+    </div>
+  </div>
+
+<script>
+  // REPLACE WITH YOUR AMAZON UK ASSOCIATE TAG ONCE REGISTERED
+  const AFFILIATE_TAG = "voltsnapuk-21";
+
+  const stdGauges = [
+    { mm: 2.5, maxA: 25 }, { mm: 4, maxA: 35 }, { mm: 6, maxA: 48 },
+    { mm: 10, maxA: 65 }, { mm: 16, maxA: 85 }, { mm: 25, maxA: 115 },
+    { mm: 35, maxA: 145 }, { mm: 50, maxA: 185 }, { mm: 70, maxA: 230 }, { mm: 95, maxA: 280 }
+  ];
+
+  function calcWire(amps, lengthMeters, maxDropPct = 3) {
+    const rho = 0.0172;
+    const maxDropV = 12.8 * (maxDropPct / 100);
+    const minMm2 = (2 * lengthMeters * amps * rho) / maxDropV;
+    for (let g of stdGauges) {
+      if (g.mm >= minMm2 && g.maxA >= amps * 1.15) return g.mm;
+    }
+    return 95;
+  }
+
+  function amzLink(query) {
+    return `https://www.amazon.co.uk/s?k=${encodeURIComponent(query)}&tag=${AFFILIATE_TAG}`;
+  }
+
+  function loadPreset(type) {
+    if (type === 'weekend') {
+      document.getElementById('battery').value = '100';
+      document.getElementById('dcdc').value = '30';
+      document.getElementById('mppt').value = '75/15';
+      document.getElementById('inverter').value = '0';
+      document.getElementById('solar-voc').value = '24';
+    } else if (type === 'tourer') {
+      document.getElementById('battery').value = '200';
+      document.getElementById('dcdc').value = '50';
+      document.getElementById('mppt').value = '100/30';
+      document.getElementById('inverter').value = '1600';
+      document.getElementById('solar-voc').value = '42';
+    } else if (type === 'gasless') {
+      document.getElementById('battery').value = '460';
+      document.getElementById('dcdc').value = '50';
+      document.getElementById('mppt').value = '100/50';
+      document.getElementById('inverter').value = '3000';
+      document.getElementById('solar-voc').value = '68';
+    }
+    recalculate();
+  }
+
+  function recalculate() {
+    const batAh = parseInt(document.getElementById('battery').value);
+    const dcdcA = parseInt(document.getElementById('dcdc').value);
+    const mpptVal = document.getElementById('mppt').value;
+    const invVA = parseInt(document.getElementById('inverter').value);
+    const lenDcdc = parseFloat(document.getElementById('len-dcdc').value) || 4.5;
+    const lenInv = parseFloat(document.getElementById('len-inv').value) || 1.5;
+    const lenHeater = parseFloat(document.getElementById('len-heater').value) || 3.5;
+    const solarVoc = parseFloat(document.getElementById('solar-voc').value) || 42;
+
+    let errors = [];
+    let warnings = [];
+
+    document.getElementById('slot-battery').classList.remove('slot-error');
+    document.getElementById('slot-inverter').classList.remove('slot-error');
+    document.getElementById('slot-solar').classList.remove('slot-error');
+    document.getElementById('slot-12v').classList.remove('slot-warn');
+
+    const bmsMax = batAh === 100 ? 100 : (batAh === 200 ? 200 : (batAh === 300 ? 250 : 300));
+    const invAmps = Math.round((invVA * 0.85) / 12 * 1.15);
+
+    if (invAmps > bmsMax) {
+      errors.push(`❌ BMS TRIP LOCKOUT: ${invVA}VA Inverter draws ~${invAmps}A peak, exceeding your ${batAh}Ah battery's ${bmsMax}A BMS limit.`);
+      document.getElementById('slot-battery').classList.add('slot-error');
+      document.getElementById('slot-inverter').classList.add('slot-error');
+    }
+
+    const maxMpptV = parseInt(mpptVal.split('/')[0]);
+    if (solarVoc * 1.12 > maxMpptV) {
+      errors.push(`❌ SOLAR OVER-VOLTAGE: ${solarVoc}V array (+12% cold frost spike = ${(solarVoc*1.12).toFixed(1)}V) exceeds SmartSolar ${mpptVal} (${maxMpptV}V max).`);
+      document.getElementById('slot-solar').classList.add('slot-error');
+    }
+
+    const heaterWire = calcWire(15, lenHeater, 2.5);
+    if (lenHeater >= 5) {
+      warnings.push(`⚠️ DIESEL HEATER E-02 RISK: Over ${lenHeater}m, 15A glow-plug startup drops voltage. Auto-upgraded heater feed to ${heaterWire}mm² cable.`);
+      document.getElementById('slot-12v').classList.add('slot-warn');
+    }
+
+    const batWire = calcWire(Math.max(bmsMax, 150), 1.0, 2);
+    const dcdcFuse = dcdcA === 18 ? 30 : (dcdcA === 30 ? 60 : 70);
+    const dcdcWire = calcWire(dcdcA * 1.15, lenDcdc, 2.5);
+    const mpptAmps = parseInt(mpptVal.split('/')[1]);
+    const mpptFuse = mpptAmps <= 20 ? 30 : (mpptAmps === 30 ? 40 : 60);
+    const mpptWire = calcWire(mpptAmps, 2.0, 2.5);
+    const invWire = invVA === 0 ? 0 : calcWire(invAmps, lenInv, 2.0);
+    const invFuse = invVA === 0 ? 0 : (invAmps <= 100 ? 125 : (invAmps <= 160 ? 200 : (invAmps <= 220 ? 250 : 350)));
+
+    document.getElementById('bridge-battery').innerHTML = `🔗 <b>Auto-Bridge:</b> ${batWire}mm² Pure Copper + <b>250A Class-T Fuse</b> + 275A Isolator → Lynx Spine.`;
+    document.getElementById('bridge-dcdc').innerHTML = `🔗 <b>Auto-Bridge (${lenDcdc}m):</b> ${dcdcWire}mm² Cable + <b>2x ${dcdcFuse}A MIDI Fuses</b> (Starter & Lynx).`;
+    document.getElementById('bridge-solar').innerHTML = `🔗 <b>Auto-Bridge:</b> 6mm² Solar PV + Dual Isolator → MPPT → ${mpptWire}mm² Cable + <b>${mpptFuse}A MIDI Fuse</b>.`;
+    document.getElementById('bridge-inverter').innerHTML = invVA === 0
+      ? `🔗 <b>No 240V Inverter:</b> Pure 12V DC setup.`
+      : `🔗 <b>Auto-Bridge (${lenInv}m):</b> ${invWire}mm² Cable (~${invAmps}A) + <b>${invFuse}A MEGA Fuse</b> + 240V RCD Unit.`;
+    document.getElementById('bridge-12v').innerHTML = `🔗 <b>Auto-Bridge:</b> 16mm² Feed + <b>60A MIDI Fuse</b> to 12-Way Box | Heater (${lenHeater}m): <b>${heaterWire}mm² + 20A Blade</b>.`;
+
+    // Update Alerts
+    const alertBox = document.getElementById('alert-box');
+    const badge = document.getElementById('system-status-badge');
+    if (errors.length > 0) {
+      alertBox.className = "block mb-5 p-3.5 rounded-lg border border-red-500 bg-red-950/90 text-red-200 text-xs font-semibold space-y-1.5";
+      alertBox.innerHTML = errors.concat(warnings).join('<br>');
+      badge.className = "px-3 py-1.5 rounded-full text-xs font-bold bg-red-900 text-red-200 border border-red-500";
+      badge.innerText = "✕ LOCKOUT ACTIVE";
+    } else if (warnings.length > 0) {
+      alertBox.className = "block mb-5 p-3.5 rounded-lg border border-amber-500 bg-amber-950/80 text-amber-200 text-xs font-semibold space-y-1.5";
+      alertBox.innerHTML = warnings.join('<br>');
+      badge.className = "px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-900 text-emerald-300 border border-emerald-600";
+      badge.innerText = "✓ SAFE (WITH UPGRADE)";
+    } else {
+      alertBox.className = "hidden";
+      badge.className = "px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-900 text-emerald-300 border border-emerald-600";
+      badge.innerText = "✓ SYSTEM SAFE";
+    }
+
+    // Draw Live SVG Wiring Schematic
+    renderSchematic({ batAh, batWire, dcdcA, dcdcWire, dcdcFuse, mpptVal, mpptWire, mpptFuse, invVA, invWire, invFuse, heaterWire });
+
+    // Build Dynamic Affiliate BOM List
+    const dcdcName = dcdcA === 50 ? "Victron Orion XS 12/12-50A DC-DC Charger" : `Victron Orion-Tr Smart 12/12-${dcdcA}A`;
+    const invName = invVA === 0 ? null : (invVA === 800 ? "Victron Phoenix Inverter 12/800" : `Victron MultiPlus 12/${invVA}`);
+    const bomItems = [
+      { name: `${batAh}Ah 12V LiFePO4 Leisure Battery`, spec: `${batWire}mm² Interconnects + M8 Lugs`, q: `${batAh}Ah 12V LiFePO4 Battery UK` },
+      { name: `Victron Lynx Distributor + SmartShunt 500A`, spec: `250A Class-T Fuse + 275A Master Isolator`, q: `Victron Lynx Distributor SmartShunt 500A` },
+      { name: dcdcName, spec: `${lenDcdc}m of ${dcdcWire}mm² Red/Black Cable + 2x ${dcdcFuse}A MIDI Fuses`, q: dcdcName },
+      { name: `Victron SmartSolar MPPT ${mpptVal}`, spec: `${mpptWire}mm² Cable + ${mpptFuse}A MIDI Fuse + Solar Isolator`, q: `Victron SmartSolar MPPT ${mpptVal}` },
+      { name: `12-Way Blade Fuse Block & Heater Feed`, spec: `16mm² Feed (60A MIDI) + ${lenHeater}m of ${heaterWire}mm² Heater Wire`, q: `12V 12 Way Blade Fuse Box Busbar Marine` }
+    ];
+    if (invName) {
+      bomItems.splice(4, 0, { name: invName, spec: `${lenInv}m of ${invWire}mm² Welding Cable + ${invFuse}A MEGA Fuse`, q: invName });
+    }
+
+    document.getElementById('bom-list').innerHTML = bomItems.map(item => `
+      <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded border border-slate-800">
+        <div>
+          <div class="font-bold text-slate-200">${item.name}</div>
+          <div class="text-[11px] text-sky-400 font-mono">${item.spec}</div>
+        </div>
+        <a href="${amzLink(item.q)}" target="_blank" class="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black px-3 py-1.5 rounded text-xs whitespace-nowrap ml-2">
+          Find Kit →
+        </a>
+      </div>
+    `).join('');
+
+    // Basket Math
+    const total = Math.round((batAh * 3.8) + (dcdcA === 50 ? 295 : 185) + (mpptAmps * 4.5 + 40) + (invVA * 0.48) + 260);
+    document.getElementById('basket-total').innerText = `£${total.toLocaleString()}`;
+    document.getElementById('affiliate-cut').innerText = `~£${(total * 0.07).toFixed(2)}`;
+  }
+
+  function renderSchematic(s) {
+    const svg = `
+    <svg viewBox="0 0 720 340" class="w-full h-auto font-mono" xmlns="http://www.w3.org/2000/svg">
+      <!-- CENTRAL SPINE: VICTRON LYNX DISTRIBUTOR -->
+      <rect x="230" y="135" width="260" height="65" rx="6" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+      <text x="360" y="160" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">VICTRON LYNX DISTRIBUTOR</text>
+      <text x="360" y="178" fill="#7dd3fc" font-size="10" text-anchor="middle">+12V POSITIVE & NEGATIVE BUSBAR SPINE</text>
+      <line x1="245" y1="188" x2="475" y2="188" stroke="#ef4444" stroke-width="3"/>
+      <line x1="245" y1="194" x2="475" y2="194" stroke="#94a3b8" stroke-width="3"/>
+
+      <!-- LEFT: LITHIUM BATTERY + SMARTSHUNT -->
+      <rect x="15" y="120" width="145" height="95" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+      <text x="87" y="145" fill="#10b981" font-size="12" font-weight="bold" text-anchor="middle">${s.batAh}Ah LiFePO4</text>
+      <text x="87" y="162" fill="#cbd5e1" font-size="9" text-anchor="middle">+ 250A Class-T Fuse</text>
+      <text x="87" y="177" fill="#cbd5e1" font-size="9" text-anchor="middle">+ 275A Isolator</text>
+      <text x="87" y="195" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">SmartShunt 500A (Neg)</text>
+      <line x1="160" y1="155" x2="230" y2="155" stroke="#ef4444" stroke-width="4"/>
+      <line x1="160" y1="180" x2="230" y2="180" stroke="#64748b" stroke-width="4"/>
+      <text x="195" y="147" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">${s.batWire}mm²</text>
+
+      <!-- TOP LEFT: ALTERNATOR DC-DC -->
+      <rect x="200" y="15" width="150" height="65" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="275" y="38" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">ORION DC-DC ${s.dcdcA}A</text>
+      <text x="275" y="54" fill="#cbd5e1" font-size="9" text-anchor="middle">Fuse: 2x ${s.dcdcFuse}A MIDI</text>
+      <text x="275" y="68" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">Wire: ${s.dcdcWire}mm²</text>
+      <line x1="275" y1="80" x2="275" y2="135" stroke="#ef4444" stroke-width="2.5"/>
+
+      <!-- TOP RIGHT: SOLAR MPPT -->
+      <rect x="380" y="15" width="150" height="65" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="455" y="38" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">MPPT ${s.mpptVal}</text>
+      <text x="455" y="54" fill="#cbd5e1" font-size="9" text-anchor="middle">Fuse: ${s.mpptFuse}A MIDI</text>
+      <text x="455" y="68" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">Wire: ${s.mpptWire}mm²</text>
+      <line x1="455" y1="80" x2="455" y2="135" stroke="#ef4444" stroke-width="2.5"/>
+
+      <!-- BOTTOM LEFT: 240V INVERTER -->
+      <rect x="200" y="255" width="150" height="70" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="275" y="278" fill="#c084fc" font-size="11" font-weight="bold" text-anchor="middle">${s.invVA === 0 ? 'NO INVERTER' : 'INVERTER ' + s.invVA + 'VA'}</text>
+      <text x="275" y="294" fill="#cbd5e1" font-size="9" text-anchor="middle">${s.invVA === 0 ? '12V Only System' : 'Fuse: ' + s.invFuse + 'A MEGA'}</text>
+      <text x="275" y="310" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">${s.invVA === 0 ? '-' : 'Wire: ' + s.invWire + 'mm²'}</text>
+      <line x1="275" y1="200" x2="275" y2="255" stroke="${s.invVA === 0 ? '#334155' : '#ef4444'}" stroke-width="3"/>
+
+      <!-- BOTTOM RIGHT: 12V FUSE BLOCK & HEATER -->
+      <rect x="380" y="255" width="165" height="70" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="462" y="278" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">12V BLADE FUSE BOX</text>
+      <text x="462" y="294" fill="#cbd5e1" font-size="9" text-anchor="middle">Main: 16mm² + 60A MIDI</text>
+      <text x="462" y="310" fill="#fde047" font-size="9" font-weight="bold" text-anchor="middle">Heater: ${s.heaterWire}mm² (20A)</text>
+      <line x1="455" y1="200" x2="455" y2="255" stroke="#ef4444" stroke-width="2.5"/>
+
+      <!-- RIGHT: CHASSIS EARTH -->
+      <rect x="565" y="140" width="135" height="55" rx="6" fill="#0f172a" stroke="#64748b" stroke-width="1.5"/>
+      <text x="632" y="164" fill="#94a3b8" font-size="10" font-weight="bold" text-anchor="middle">CHASSIS EARTH</text>
+      <text x="632" y="180" fill="#cbd5e1" font-size="9" text-anchor="middle">${s.batWire}mm² Bare Metal</text>
+      <line x1="490" y1="168" x2="565" y2="168" stroke="#64748b" stroke-width="3.5"/>
+    </svg>`;
+    document.getElementById('svg-container').innerHTML = svg;
+  }
+
+  function exportBlueprint() {
+    if (document.getElementById('system-status-badge').innerText.includes('LOCKOUT')) {
+      alert("❌ SAFETY LOCKOUT: VoltSnap will not export a dangerous schematic. Resolve the red BMS or Solar errors first.");
+      return;
+    }
+    if (!document.getElementById('legal-check').checked) {
+      alert("⚠️ LEGAL SIGN-OFF REQUIRED: Please tick the BS 7671 / ISO 6722 safety disclaimer checkbox above the button before exporting your schematic.");
+      return;
+    }
+    window.print();
+  }
+
+  function scrollToShop() {
+    document.getElementById('shopping-drawer').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  recalculate();
+</script>
+</body>
+</html>
